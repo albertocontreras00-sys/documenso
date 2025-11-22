@@ -18,6 +18,7 @@ export const findDocumentAuditLogsRoute = authenticatedProcedure
       documentId,
       cursor,
       filterForRecentActivity,
+      eventTypes,
       orderByColumn,
       orderByDirection,
     } = input;
@@ -36,6 +37,7 @@ export const findDocumentAuditLogsRoute = authenticatedProcedure
       documentId,
       cursor,
       filterForRecentActivity,
+      eventTypes,
       orderBy: orderByColumn ? { column: orderByColumn, direction: orderByDirection } : undefined,
     });
   });

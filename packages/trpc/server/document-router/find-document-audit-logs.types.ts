@@ -7,6 +7,7 @@ export const ZFindDocumentAuditLogsRequestSchema = ZFindSearchParamsSchema.exten
   documentId: z.number().min(1),
   cursor: z.string().optional(),
   filterForRecentActivity: z.boolean().optional(),
+  eventTypes: z.array(z.string()).optional(),
   orderByColumn: z.enum(['createdAt', 'type']).optional(),
   orderByDirection: z.enum(['asc', 'desc']).default('desc'),
 });

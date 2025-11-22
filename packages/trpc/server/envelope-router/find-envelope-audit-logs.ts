@@ -20,6 +20,7 @@ export const findEnvelopeAuditLogsRoute = authenticatedProcedure
       envelopeId,
       cursor,
       filterForRecentActivity,
+      eventTypes,
       orderByColumn,
       orderByDirection,
     } = input;
@@ -38,6 +39,7 @@ export const findEnvelopeAuditLogsRoute = authenticatedProcedure
       envelopeId,
       cursor,
       filterForRecentActivity,
+      eventTypes,
       orderBy: orderByColumn ? { column: orderByColumn, direction: orderByDirection } : undefined,
     });
   });

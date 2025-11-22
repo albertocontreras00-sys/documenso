@@ -20,6 +20,7 @@ export interface FindDocumentAuditLogsOptions {
   };
   cursor?: string;
   filterForRecentActivity?: boolean;
+  eventTypes?: string[];
 }
 
 export const findDocumentAuditLogs = async ({
@@ -31,6 +32,7 @@ export const findDocumentAuditLogs = async ({
   orderBy,
   cursor,
   filterForRecentActivity,
+  eventTypes,
 }: FindDocumentAuditLogsOptions) => {
   const orderByColumn = orderBy?.column ?? 'createdAt';
   const orderByDirection = orderBy?.direction ?? 'desc';
@@ -57,7 +59,12 @@ export const findDocumentAuditLogs = async ({
     envelopeId: envelope.id,
   };
 
-  // Filter events down to what we consider recent activity.
+  if (eventTypes && eventTypes.length > 0) {
+    whereClause.type = {
+      in: eventTypes,
+    };
+  }
+
   if (filterForRecentActivity) {
     whereClause.OR = [
       {
@@ -130,6 +137,7 @@ export interface FindEnvelopeAuditLogsOptions {
   };
   cursor?: string;
   filterForRecentActivity?: boolean;
+  eventTypes?: string[];
 }
 
 export const findEnvelopeAuditLogs = async ({
@@ -141,11 +149,11 @@ export const findEnvelopeAuditLogs = async ({
   orderBy,
   cursor,
   filterForRecentActivity,
+  eventTypes,
 }: FindEnvelopeAuditLogsOptions) => {
   const orderByColumn = orderBy?.column ?? 'createdAt';
   const orderByDirection = orderBy?.direction ?? 'desc';
 
-  // Auto-detect ID type: if it's a numeric string, treat as documentId
   const isNumericId = /^\d+$/.test(envelopeId);
 
   const { envelopeWhereInput } = await getEnvelopeWhereInput({
@@ -175,7 +183,12 @@ export const findEnvelopeAuditLogs = async ({
     envelopeId: envelope.id,
   };
 
-  // Filter events down to what we consider recent activity.
+  if (eventTypes && eventTypes.length > 0) {
+    whereClause.type = {
+      in: eventTypes,
+    };
+  }
+
   if (filterForRecentActivity) {
     whereClause.OR = [
       {
