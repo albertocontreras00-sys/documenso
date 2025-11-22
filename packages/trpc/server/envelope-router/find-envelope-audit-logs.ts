@@ -12,34 +12,18 @@ export const findEnvelopeAuditLogsRoute = authenticatedProcedure
   .input(ZFindEnvelopeAuditLogsRequestSchema)
   .output(ZFindEnvelopeAuditLogsResponseSchema)
   .query(async ({ input, ctx }) => {
-    const { teamId } = ctx;
-
-    const {
-      page,
-      perPage,
-      envelopeId,
-      cursor,
-      filterForRecentActivity,
-      eventTypes,
-      orderByColumn,
-      orderByDirection,
-    } = input;
+    const { orderByColumn, orderByDirection, ...auditLogParams } = input;
 
     ctx.logger.info({
       input: {
-        envelopeId,
+        envelopeId: input.envelopeId,
       },
     });
 
     return await findEnvelopeAuditLogs({
+      ...auditLogParams,
       userId: ctx.user.id,
-      teamId,
-      page,
-      perPage,
-      envelopeId,
-      cursor,
-      filterForRecentActivity,
-      eventTypes,
+      teamId: ctx.teamId,
       orderBy: orderByColumn ? { column: orderByColumn, direction: orderByDirection } : undefined,
     });
   });

@@ -22,10 +22,6 @@ export const ZFindEnvelopeAuditLogsRequestSchema = ZFindSearchParamsSchema.exten
     .describe('Envelope ID (e.g., envelope_xxx) or legacy document ID (e.g., 12345)'),
   cursor: z.string().optional(),
   filterForRecentActivity: z.boolean().optional(),
-  eventTypes: z
-    .array(z.string())
-    .optional()
-    .describe('Filter by specific event types (e.g., ["DOCUMENT_CREATED", "DOCUMENT_SENT"])'),
   orderByColumn: z.enum(['createdAt', 'type']).optional(),
   orderByDirection: z.enum(['asc', 'desc']).default('desc'),
 });
