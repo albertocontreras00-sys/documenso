@@ -348,7 +348,7 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
     }
   }),
 
-  createDocument: authenticatedMiddleware(async (args, user, team, { metadata }) => {
+  createDocument: authenticatedMiddleware(async (args, user, team, { metadata, logger }) => {
     const { body } = args;
 
     try {
@@ -476,7 +476,7 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
         },
       };
     } catch (err) {
-      const requestId = metadata?.requestMetadata?.requestId || metadata?.logger?.bindings?.()?.requestId || 'unknown';
+      const requestId = logger?.bindings?.()?.requestId || 'unknown';
       console.error('Documenso upload failure', {
         error: err,
         errorMessage: err instanceof Error ? err.message : String(err),
