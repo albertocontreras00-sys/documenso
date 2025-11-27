@@ -476,12 +476,18 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
         },
       };
     } catch (err) {
-      return {
-        status: 404,
-        body: {
-          message: 'An error has occured while uploading the file',
-        },
-      };
+      const requestId = metadata?.requestMetadata?.requestId || metadata?.logger?.bindings?.()?.requestId || 'unknown';
+      console.error('Documenso upload failure', {
+        error: err,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        errorStack: err instanceof Error ? err.stack : undefined,
+        requestId,
+        userId: user?.id,
+        teamId: team?.id,
+        bodyTitle: args.body?.title,
+        bodyRecipientsCount: args.body?.recipients?.length,
+      });
+      throw err; // Rethrow after logging - error handler will catch it
     }
   }),
 
