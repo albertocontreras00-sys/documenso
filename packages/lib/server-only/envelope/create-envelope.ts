@@ -256,8 +256,9 @@ export const createEnvelope = async ({
       ? await incrementDocumentId().then((v) => v.formattedDocumentId)
       : await incrementTemplateId().then((v) => v.formattedTemplateId);
 
-  return await prisma.$transaction(async (tx) => {
-    const envelope = await tx.envelope.create({
+  return await prisma.$transaction(
+    async (tx) => {
+      const envelope = await tx.envelope.create({
       data: {
         id: prefixedId('envelope'),
         secondaryId,
@@ -412,5 +413,9 @@ export const createEnvelope = async ({
     }
 
     return createdEnvelope;
-  });
+    },
+    {
+      timeout: 15000, // 15 seconds - increased from default 5s to handle slow operations
+    }
+  );
 };
