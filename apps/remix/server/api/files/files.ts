@@ -30,8 +30,12 @@ export const filesRoute = new Hono<HonoEnv>()
    * a document data record.
    */
   .post('/upload-pdf', sValidator('form', ZUploadPdfRequestSchema), async (c) => {
+    let file: File | undefined;
+    // Convert MB to bytes (1 MB = 1024 * 1024 bytes)
+    const MAX_FILE_SIZE = APP_DOCUMENT_UPLOAD_SIZE_LIMIT * 1024 * 1024;
+
     try {
-      const { file } = c.req.valid('form');
+      ({ file } = c.req.valid('form'));
 
       if (!file) {
         return c.json({ error: 'No file provided' }, 400);
@@ -39,9 +43,6 @@ export const filesRoute = new Hono<HonoEnv>()
 
       // Todo: (RR7) This is new.
       // Add file size validation.
-      // Convert MB to bytes (1 MB = 1024 * 1024 bytes)
-      const MAX_FILE_SIZE = APP_DOCUMENT_UPLOAD_SIZE_LIMIT * 1024 * 1024;
-
       if (file.size > MAX_FILE_SIZE) {
         return c.json({ error: 'File too large' }, 400);
       }
@@ -50,7 +51,18 @@ export const filesRoute = new Hono<HonoEnv>()
 
       return c.json(result);
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('DOCUMENSO UPLOAD ERROR', {
+        timestamp: new Date().toISOString(),
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        errorName: error instanceof Error ? error.name : typeof error,
+        fileName: file?.name,
+        fileSize: file?.size,
+        contentType: file?.type,
+        maxFileSize: MAX_FILE_SIZE,
+        requestId: c.req.header('x-request-id') || c.req.header('fly-request-id'),
+        userAgent: c.req.header('user-agent'),
+      });
       return c.json({ error: 'Upload failed' }, 500);
     }
   })

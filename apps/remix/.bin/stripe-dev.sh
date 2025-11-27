@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 
 # Set Error handling
 set -eu
@@ -61,17 +61,18 @@ fi
 NEXT_PRIVATE_STRIPE_WEBHOOK_SECRET=$(load_env_var "NEXT_PRIVATE_STRIPE_WEBHOOK_SECRET")
 
 if [ -z "$NEXT_PRIVATE_STRIPE_WEBHOOK_SECRET" ]; then
-  echo "╔═════════════════════════════════════════════════════════════════════╗"
-  echo "║                                                                     ║"
-  echo "║  ! WARNING: NEXT_PRIVATE_STRIPE_WEBHOOK_SECRET MISSING !            ║"
-  echo "║                                                                     ║"
-  echo "║  Copy the webhook signing secret which will appear in the terminal  ║"
-  echo "║  soon into the env file.                                            ║"
-  echo "║                                                                     ║"
-  echo "║  The webhook secret will start with whsec_...                       ║"
-  echo "║                                                                     ║"
-  echo "╚═════════════════════════════════════════════════════════════════════╝"
+  echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+  echo "â•‘                                                                     â•‘"
+  echo "â•‘  ! WARNING: NEXT_PRIVATE_STRIPE_WEBHOOK_SECRET MISSING !            â•‘"
+  echo "â•‘                                                                     â•‘"
+  echo "â•‘  Copy the webhook signing secret which will appear in the terminal  â•‘"
+  echo "â•‘  soon into the env file.                                            â•‘"
+  echo "â•‘                                                                     â•‘"
+  echo "â•‘  The webhook secret will start with whsec_...                       â•‘"
+  echo "â•‘                                                                     â•‘"
+  echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
 fi
 
 echo "[INFO]: Starting Stripe webhook listener..."
 stripe listen --api-key "$NEXT_PRIVATE_STRIPE_API_KEY" --forward-to http://localhost:3000/api/stripe/webhook
+
