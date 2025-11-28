@@ -40,9 +40,18 @@ export const getDatabaseUrl = () => {
   // we're using PgBouncer.
   if (process.env.NEXT_PRIVATE_DATABASE_URL !== process.env.NEXT_PRIVATE_DIRECT_DATABASE_URL) {
     url.searchParams.set('pgbouncer', 'true');
-
-    process.env.NEXT_PRIVATE_DATABASE_URL = url.toString().replace('https://', 'postgres://');
   }
 
-  return process.env.NEXT_PRIVATE_DATABASE_URL;
+  // Configure connection pool settings to prevent timeouts
+  // Default Prisma pool size is 1, which causes timeouts when transactions block the connection
+  // Increase to 10 connections with 20s timeout for better concurrency
+  // Only set if not already configured
+  if (!url.searchParams.has('connection_limit')) {
+    url.searchParams.set('connection_limit', '10');
+  }
+  if (!url.searchParams.has('pool_timeout')) {
+    url.searchParams.set('pool_timeout', '20');
+  }
+
+  return url.toString().replace('https://', 'postgres://');
 };
