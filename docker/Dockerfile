@@ -134,16 +134,25 @@ COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/schema.prisma .
 COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/migrations ./packages/prisma/migrations
 
 # Generate the prisma client again with cache mount
-# Fix cache ownership as root, then switch to nodejs user
+# Cache mounts are owned by root, so run prisma generate as root, then fix ownership
 USER root
 RUN --mount=type=cache,target=/app/.npm-cache \
     chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
 
-USER nodejs
+# Ensure node_modules directory exists and run prisma generate as root
+RUN mkdir -p /app/node_modules/.prisma && \
+    chown -R nodejs:nodejs /app/node_modules
+
+# Run prisma generate as root (cache mounts require root to write)
 RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.prisma \
     npm config set cache /app/.npm-cache && \
     npx prisma generate --schema ./packages/prisma/schema.prisma
+
+# Fix ownership of generated Prisma client files
+RUN chown -R nodejs:nodejs /app/node_modules/.prisma 2>/dev/null || true
+
+USER nodejs
 
 
 # Get the start script from docker/
