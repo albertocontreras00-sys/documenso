@@ -73,7 +73,6 @@ COPY --from=builder /app/lingui.config.ts ./lingui.config.ts
 
 # Install dependencies with cache mounts for faster rebuilds
 RUN --mount=type=cache,target=/root/.npm \
-    --mount=type=cache,target=/app/node_modules/.cache \
     npm ci
 
 # Then copy all the source code (as it changes more often)
@@ -86,7 +85,6 @@ RUN npm install -g "turbo@^1.9.3"
 # Build with cache mounts for Turbo and npm
 RUN --mount=type=cache,target=/root/.npm \
     --mount=type=cache,target=/app/.turbo \
-    --mount=type=cache,target=/app/node_modules/.cache \
     turbo run build --filter=@documenso/remix...
 
 ###########################
@@ -117,13 +115,11 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config
 # Install production dependencies with cache mounts
 # Fix cache ownership as root, then switch to nodejs user
 RUN --mount=type=cache,target=/app/.npm-cache \
-    --mount=type=cache,target=/app/node_modules/.cache \
     chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
 
 USER nodejs
 
 RUN --mount=type=cache,target=/app/.npm-cache \
-    --mount=type=cache,target=/app/node_modules/.cache \
     npm ci --only=production --cache=/app/.npm-cache
 
 # Automatically leverage output traces to reduce image size
