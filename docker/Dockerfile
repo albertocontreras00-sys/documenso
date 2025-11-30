@@ -108,8 +108,6 @@ ENV NEXT_PRIVATE_TELEMETRY_HOST="$NEXT_PRIVATE_TELEMETRY_HOST"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodejs
 
-USER nodejs
-
 WORKDIR /app
 
 COPY --from=builder --chown=nodejs:nodejs /app/out/json/ .
@@ -117,7 +115,13 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/json/ .
 COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config ./packages/tailwind-config
 
 # Install production dependencies with cache mounts
-# Use /app/.npm-cache to avoid permission issues with /home/nodejs/.npm
+# Fix cache ownership as root, then switch to nodejs user
+RUN --mount=type=cache,target=/app/.npm-cache \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
+
+USER nodejs
+
 RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.cache \
     npm ci --only=production --cache=/app/.npm-cache
@@ -132,7 +136,12 @@ COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/schema.prisma .
 COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/migrations ./packages/prisma/migrations
 
 # Generate the prisma client again with cache mount
-# Use /app/.npm-cache to avoid permission issues with /home/nodejs/.npm
+# Fix cache ownership as root, then switch to nodejs user
+USER root
+RUN --mount=type=cache,target=/app/.npm-cache \
+    chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
+
+USER nodejs
 RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.prisma \
     npm config set cache /app/.npm-cache && \
