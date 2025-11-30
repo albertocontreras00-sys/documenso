@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
 import { extractRequestMetadata } from '@documenso/lib/universal/extract-request-metadata';
+import { env } from '@documenso/lib/utils/env';
 
 import { setCsrfCookie } from './lib/session/session-cookies';
 import { accountRoute } from './routes/account';
@@ -17,15 +19,48 @@ import { signOutRoute } from './routes/sign-out';
 import { twoFactorRoute } from './routes/two-factor';
 import type { HonoAuthContext } from './types/context';
 
+const allowedOrigins = Array.from(
+  new Set(
+    [NEXT_PUBLIC_WEBAPP_URL(), env('NEXT_PUBLIC_EMBED_URL'), env('NEXT_PUBLIC_EMBED_ALT_URL')]
+      .filter(Boolean)
+      .map((url) => {
+        if (!url) {
+          return null;
+        }
+
+        try {
+          return new URL(url).origin;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[],
+  ),
+);
+
 // Note: You must chain routes for Hono RPC client to work.
 export const auth = new Hono<HonoAuthContext>()
+  .use(
+    '*',
+    cors({
+      origin: (origin) => {
+        if (!origin) {
+          return true;
+        }
+
+        return allowedOrigins.includes(origin);
+      },
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      credentials: true,
+    }),
+  )
   .use(async (c, next) => {
     c.set('requestMetadata', extractRequestMetadata(c.req.raw));
 
-    const validOrigin = new URL(NEXT_PUBLIC_WEBAPP_URL()).origin;
     const headerOrigin = c.req.header('Origin');
 
-    if (headerOrigin && headerOrigin !== validOrigin) {
+    if (headerOrigin && !allowedOrigins.includes(headerOrigin)) {
       return c.json(
         {
           message: 'Forbidden',

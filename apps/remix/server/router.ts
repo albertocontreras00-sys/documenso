@@ -8,11 +8,12 @@ import type { Logger } from 'pino';
 
 import { tsRestHonoApp } from '@documenso/api/hono';
 import { auth } from '@documenso/auth/server';
-import { API_V2_BETA_URL, API_V2_URL } from '@documenso/lib/constants/app';
+import { API_V2_BETA_URL, API_V2_URL, NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { jobsClient } from '@documenso/lib/jobs/client';
 import { TelemetryClient } from '@documenso/lib/server-only/telemetry/telemetry-client';
 import { getIpAddress } from '@documenso/lib/universal/get-ip-address';
 import { logger } from '@documenso/lib/utils/logger';
+import { env } from '@documenso/lib/utils/env';
 import { openApiDocument } from '@documenso/trpc/server/open-api';
 
 import { downloadRoute } from './api/download/download';
@@ -30,6 +31,33 @@ export interface HonoEnv {
 }
 
 const app = new Hono<HonoEnv>();
+
+const allowOrigins = Array.from(
+  new Set(
+    [NEXT_PUBLIC_WEBAPP_URL(), env('NEXT_PUBLIC_EMBED_URL'), env('NEXT_PUBLIC_EMBED_ALT_URL')]
+      .filter(Boolean)
+      .map((url) => {
+        if (!url) {
+          return null;
+        }
+
+        try {
+          return new URL(url).origin;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[],
+  ),
+);
+
+const allowOriginMatcher = (origin?: string) => {
+  if (!origin) {
+    return true;
+  }
+
+  return allowOrigins.includes(origin);
+};
 
 /**
  * Rate limiting for v1 and v2 API routes only.
@@ -83,6 +111,16 @@ app.use('/api/v2/*', rateLimitMiddleware);
 app.route('/api/auth', auth);
 
 // Files route.
+app.use(
+  '/api/files/*',
+  cors({
+    origin: allowOriginMatcher,
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposeHeaders: ['Content-Disposition'],
+    credentials: true,
+  }),
+);
 app.route('/api/files', filesRoute);
 
 // API servers.
