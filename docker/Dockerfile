@@ -112,7 +112,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/json/ .
 # Copy the tailwind config files across
 COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config ./packages/tailwind-config
 
-# Install production dependencies with cache mounts
+# Ensure /app directory is owned by nodejs user and fix cache ownership
+RUN chown -R nodejs:nodejs /app
+
 # Fix cache ownership as root, then switch to nodejs user
 RUN --mount=type=cache,target=/app/.npm-cache \
     chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
