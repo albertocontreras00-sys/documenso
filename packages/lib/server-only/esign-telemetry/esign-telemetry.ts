@@ -1,3 +1,5 @@
+import type { ApiRequestMetadata } from '../../universal/extract-request-metadata';
+
 /**
  * E-Signature Telemetry Helper (Sign Server)
  * 
@@ -77,11 +79,11 @@ export async function logEsignEvent(opts: {
     ...(documentId && { 'document_id': String(documentId) }),
     
     // Error field (if error provided)
-    ...(error && {
+    ...(error ? {
       'esign.error_message': error instanceof Error 
         ? error.message 
         : String(error)
-    }),
+    } : {}),
     
     // Extra fields (flattened with esign prefix where appropriate)
     ...Object.entries(extra).reduce((acc, [key, value]) => {
@@ -119,14 +121,16 @@ export async function logEsignEvent(opts: {
  */
 export function extractTraceId(sources?: {
   traceId?: string;
-  requestMetadata?: { traceId?: string };
+  requestMetadata?: ApiRequestMetadata | { traceId?: string };
   meta?: { traceId?: string };
 }): string {
   const { traceId, requestMetadata, meta } = sources || {};
   
   // Priority: explicit traceId > requestMetadata.traceId > meta.traceId > generated
   if (traceId) return traceId;
-  if (requestMetadata?.traceId) return requestMetadata.traceId;
+  if (requestMetadata && 'traceId' in requestMetadata && requestMetadata.traceId) {
+    return requestMetadata.traceId;
+  }
   if (meta?.traceId) return meta.traceId;
   
   // Generate fallback trace ID

@@ -39,6 +39,11 @@ export type ApiRequestMetadata = {
     email: string | null;
     name: string | null;
   };
+
+  /**
+   * Optional trace ID for request tracing and telemetry.
+   */
+  traceId?: string;
 };
 
 export const extractRequestMetadata = (req: Request): RequestMetadata => {

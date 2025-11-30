@@ -266,7 +266,7 @@ export const sendDocument = async ({
 
   // Extract trace ID for telemetry
   const traceId = extractTraceId({
-    traceId: requestMetadata?.requestMetadata?.traceId,
+    traceId: requestMetadata?.traceId,
     requestMetadata,
   });
 

@@ -179,10 +179,8 @@ export const run = async ({
   });
 
   // Extract trace ID for telemetry
-  const traceId = extractTraceId({
-    traceId: requestMetadata?.traceId,
-    requestMetadata,
-  });
+  // Note: requestMetadata is RequestMetadata (not ApiRequestMetadata), so it doesn't have traceId
+  const traceId = extractTraceId({});
 
   await io.runTask('send-signing-email', async () => {
     // E-sign telemetry: SES send attempt

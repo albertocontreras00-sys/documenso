@@ -415,7 +415,7 @@ export const createEnvelope = async ({
 
       // E-sign telemetry: Documenso document created (after transaction)
       const traceId = extractTraceId({
-        traceId: requestMetadata?.requestMetadata?.traceId,
+        traceId: requestMetadata?.traceId,
         requestMetadata,
       });
       const legacyDocumentId = mapSecondaryIdToDocumentId(createdEnvelope.secondaryId);
