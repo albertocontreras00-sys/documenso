@@ -71,7 +71,10 @@ COPY --from=builder /app/out/package-lock.json ./package-lock.json
 
 COPY --from=builder /app/lingui.config.ts ./lingui.config.ts
 
-RUN npm ci
+# Install dependencies with cache mounts for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    npm ci
 
 # Then copy all the source code (as it changes more often)
 COPY --from=builder /app/out/full/ .
@@ -80,7 +83,11 @@ COPY turbo.json turbo.json
 
 RUN npm install -g "turbo@^1.9.3"
 
-RUN turbo run build --filter=@documenso/remix...
+# Build with cache mounts for Turbo and npm
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/.turbo \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    turbo run build --filter=@documenso/remix...
 
 ###########################
 #     RUNNER CONTAINER    #
@@ -109,7 +116,10 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/json/ .
 # Copy the tailwind config files across
 COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config ./packages/tailwind-config
 
-RUN npm ci --only=production
+# Install production dependencies with cache mounts
+RUN --mount=type=cache,target=/home/nodejs/.npm \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    npm ci --only=production
 
 # Automatically leverage output traces to reduce image size
 # https://nodejs.org/docs/advanced-features/output-file-tracing
@@ -120,8 +130,10 @@ COPY --from=installer --chown=nodejs:nodejs /app/apps/remix/public ./apps/remix/
 COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/schema.prisma ./packages/prisma/schema.prisma
 COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/migrations ./packages/prisma/migrations
 
-# Generate the prisma client again
-RUN npx prisma generate --schema ./packages/prisma/schema.prisma
+# Generate the prisma client again with cache mount
+RUN --mount=type=cache,target=/home/nodejs/.npm \
+    --mount=type=cache,target=/app/node_modules/.prisma \
+    npx prisma generate --schema ./packages/prisma/schema.prisma
 
 
 # Get the start script from docker/
