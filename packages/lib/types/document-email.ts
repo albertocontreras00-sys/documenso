@@ -1,6 +1,8 @@
 import type { DocumentMeta } from '@prisma/client';
-import { DocumentDistributionMethod } from '@prisma/client';
+import pkg from '@prisma/client';
 import { z } from 'zod';
+
+const { DocumentDistributionMethod } = pkg;
 
 export enum DocumentEmailEvents {
   RecipientSigningRequest = 'recipientSigningRequest',
