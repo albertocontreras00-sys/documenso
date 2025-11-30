@@ -2,8 +2,10 @@
  * Legacy Document schema to confirm backwards API compatibility since
  * we migrated Documents to Envelopes.
  */
-import { DocumentSource } from '@prisma/client';
+import pkg from '@prisma/client';
 import { z } from 'zod';
+
+const { DocumentSource } = pkg;
 
 import { ZDocumentAuthOptionsSchema } from '@documenso/lib/types/document-auth';
 import { ZDocumentFormValuesSchema } from '@documenso/lib/types/document-form-values';
