@@ -51,12 +51,8 @@ const allowOrigins = Array.from(
   ),
 );
 
-const allowOriginMatcher = (origin?: string) => {
-  if (!origin) {
-    return true;
-  }
-
-  return allowOrigins.includes(origin);
+const allowOriginMatcher = (origin: string) => {
+  return allowOrigins.includes(origin) ? origin : null;
 };
 
 /**

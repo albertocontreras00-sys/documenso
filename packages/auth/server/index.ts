@@ -45,10 +45,10 @@ export const auth = new Hono<HonoAuthContext>()
     cors({
       origin: (origin) => {
         if (!origin) {
-          return true;
+          return null;
         }
 
-        return allowedOrigins.includes(origin);
+        return allowedOrigins.includes(origin) ? origin : null;
       },
       allowMethods: ['GET', 'POST', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
