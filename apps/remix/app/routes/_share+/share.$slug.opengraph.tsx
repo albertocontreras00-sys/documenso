@@ -189,8 +189,7 @@ export const loader = async ({ params }: Route.LoaderArgs) => {
       'Content-Type': 'image/png',
       'Content-Length': pngBuffer.length.toString(),
       'Cache-Control': 'public, max-age=31536000, immutable',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      // CORS headers removed for same-origin operation (OPTION A)
     },
   });
 };

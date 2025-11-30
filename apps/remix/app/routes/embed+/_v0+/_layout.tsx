@@ -15,15 +15,21 @@ import { EmbedPaywall } from '~/components/embed/embed-paywall';
 
 import type { Route } from './+types/_layout';
 
-// Todo: (RR7) Test
+// Same-origin operation (OPTION A): CORS headers removed
+// Only same-origin requests are allowed
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
-  const origin = loaderHeaders.get('Origin') ?? '*';
+  // Same-origin only: no CORS headers needed
+  // Content-Security-Policy restricted to same-origin
+  const webappUrl = process.env.NEXT_PUBLIC_WEBAPP_URL || 'https://sign.holaconecta.com';
+  let allowedOrigin: string;
+  try {
+    allowedOrigin = new URL(webappUrl).origin;
+  } catch {
+    allowedOrigin = 'https://sign.holaconecta.com';
+  }
 
-  // Allow third parties to iframe the document.
   return {
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Origin': origin,
-    'Content-Security-Policy': `frame-ancestors ${origin}`,
+    'Content-Security-Policy': `frame-ancestors ${allowedOrigin}`,
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Content-Type-Options': 'nosniff',
   };

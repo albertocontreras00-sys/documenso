@@ -1,12 +1,10 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
 import { extractRequestMetadata } from '@documenso/lib/universal/extract-request-metadata';
-import { env } from '@documenso/lib/utils/env';
 
 import { setCsrfCookie } from './lib/session/session-cookies';
 import { accountRoute } from './routes/account';
@@ -19,51 +17,29 @@ import { signOutRoute } from './routes/sign-out';
 import { twoFactorRoute } from './routes/two-factor';
 import type { HonoAuthContext } from './types/context';
 
-const allowedOrigins = Array.from(
-  new Set(
-    [NEXT_PUBLIC_WEBAPP_URL(), env('NEXT_PUBLIC_EMBED_URL'), env('NEXT_PUBLIC_EMBED_ALT_URL')]
-      .filter(Boolean)
-      .map((url) => {
-        if (!url) {
-          return null;
-        }
-
-        try {
-          return new URL(url).origin;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as string[],
-  ),
-);
+// Same-origin operation (OPTION A): Only allow requests from the same origin
+const allowedOrigin = (() => {
+  try {
+    return new URL(NEXT_PUBLIC_WEBAPP_URL()).origin;
+  } catch {
+    return null;
+  }
+})();
 
 // Note: You must chain routes for Hono RPC client to work.
 export const auth = new Hono<HonoAuthContext>()
-  .use(
-    '*',
-    cors({
-      origin: (origin) => {
-        if (!origin) {
-          return null;
-        }
-
-        return allowedOrigins.includes(origin) ? origin : null;
-      },
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
-      credentials: true,
-    }),
-  )
   .use(async (c, next) => {
     c.set('requestMetadata', extractRequestMetadata(c.req.raw));
 
+    // Same-origin enforcement: Only allow requests from the same origin
     const headerOrigin = c.req.header('Origin');
-
-    if (headerOrigin && !allowedOrigins.includes(headerOrigin)) {
+    
+    // Allow requests without Origin header (same-origin requests from the same domain)
+    // Reject requests with Origin header that doesn't match our origin
+    if (headerOrigin && allowedOrigin && headerOrigin !== allowedOrigin) {
       return c.json(
         {
-          message: 'Forbidden',
+          message: 'Forbidden: Cross-origin requests not allowed. Same-origin operation only.',
           statusCode: 403,
         },
         403,

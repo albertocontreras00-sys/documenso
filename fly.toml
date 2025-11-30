@@ -9,6 +9,10 @@ primary_region = "lax"
   PORT = "8080"
   HOSTNAME = "0.0.0.0"
   NODE_ENV = "production"
+  NEXTAUTH_URL = "https://sign.holaconecta.com"
+  NEXTAUTH_URL_INTERNAL = "https://sign.holaconecta.com"
+  NEXT_PUBLIC_WEBAPP_URL = "https://sign.holaconecta.com"
+  NEXT_PRIVATE_INTERNAL_WEBAPP_URL = "https://sign.holaconecta.com"
 
 [http_service]
   internal_port = 8080

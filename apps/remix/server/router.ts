@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { rateLimiter } from 'hono-rate-limiter';
 import { contextStorage } from 'hono/context-storage';
-import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import type { RequestIdVariables } from 'hono/request-id';
 import type { Logger } from 'pino';
@@ -32,28 +31,8 @@ export interface HonoEnv {
 
 const app = new Hono<HonoEnv>();
 
-const allowOrigins = Array.from(
-  new Set(
-    [NEXT_PUBLIC_WEBAPP_URL(), env('NEXT_PUBLIC_EMBED_URL'), env('NEXT_PUBLIC_EMBED_ALT_URL')]
-      .filter(Boolean)
-      .map((url) => {
-        if (!url) {
-          return null;
-        }
-
-        try {
-          return new URL(url).origin;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as string[],
-  ),
-);
-
-const allowOriginMatcher = (origin: string) => {
-  return allowOrigins.includes(origin) ? origin : null;
-};
+// CORS configuration removed for same-origin operation (OPTION A)
+// All requests must come from the same origin (sign.holaconecta.com)
 
 /**
  * Rate limiting for v1 and v2 API routes only.
@@ -107,27 +86,18 @@ app.use('/api/v2/*', rateLimitMiddleware);
 app.route('/api/auth', auth);
 
 // Files route.
-app.use(
-  '/api/files/*',
-  cors({
-    origin: allowOriginMatcher,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposeHeaders: ['Content-Disposition'],
-    credentials: true,
-  }),
-);
+// CORS removed for same-origin operation (OPTION A)
 app.route('/api/files', filesRoute);
 
 // API servers.
-app.use(`/api/v1/*`, cors());
+// CORS removed for same-origin operation (OPTION A)
 app.route('/api/v1', tsRestHonoApp);
 app.use('/api/jobs/*', jobsClient.getApiHandler());
 app.use('/api/trpc/*', reactRouterTrpcServer);
 
 // Unstable API server routes. Order matters for these two.
 app.get(`${API_V2_URL}/openapi.json`, (c) => c.json(openApiDocument));
-app.use(`${API_V2_URL}/*`, cors());
+// CORS removed for same-origin operation (OPTION A)
 // Shadows the download routes that tRPC defines since tRPC-to-openapi doesn't support their return types.
 app.route(`${API_V2_URL}`, downloadRoute);
 app.use(`${API_V2_URL}/*`, async (c) =>
@@ -138,7 +108,7 @@ app.use(`${API_V2_URL}/*`, async (c) =>
 
 // Unstable API server routes. Order matters for these two.
 app.get(`${API_V2_BETA_URL}/openapi.json`, (c) => c.json(openApiDocument));
-app.use(`${API_V2_BETA_URL}/*`, cors());
+// CORS removed for same-origin operation (OPTION A)
 // Shadows the download routes that tRPC defines since tRPC-to-openapi doesn't support their return types.
 app.route(`${API_V2_BETA_URL}`, downloadRoute);
 app.use(`${API_V2_BETA_URL}/*`, async (c) =>

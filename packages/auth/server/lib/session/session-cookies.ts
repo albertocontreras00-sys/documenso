@@ -28,12 +28,17 @@ const getAuthSecret = () => {
 
 /**
  * Generic auth session cookie options.
+ * 
+ * Same-origin operation (OPTION A): Using 'lax' for same-site cookies.
+ * 'none' is only needed for cross-origin requests, which we don't support.
  */
 export const sessionCookieOptions = {
   httpOnly: true,
   path: '/',
-  sameSite: useSecureCookies ? 'none' : 'lax',
+  sameSite: 'lax' as const, // Same-origin operation: use 'lax' instead of 'none'
   secure: useSecureCookies,
+  // domain is automatically set to the hostname from NEXT_PUBLIC_WEBAPP_URL
+  // For same-origin, this ensures cookies work correctly
   domain: getCookieDomain(),
   expires: new Date(Date.now() + AUTH_SESSION_LIFETIME),
 } as const;
