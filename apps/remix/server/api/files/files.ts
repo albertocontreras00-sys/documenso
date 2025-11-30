@@ -30,6 +30,10 @@ export const filesRoute = new Hono<HonoEnv>()
    * a document data record.
    */
   .post('/upload-pdf', sValidator('form', ZUploadPdfRequestSchema), async (c) => {
+    // Performance timing: File upload
+    const UPLOAD_START = Date.now();
+    const uploadRequestId = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+    
     let file: File | undefined;
     // Convert MB to bytes (1 MB = 1024 * 1024 bytes)
     const MAX_FILE_SIZE = APP_DOCUMENT_UPLOAD_SIZE_LIMIT * 1024 * 1024;
@@ -41,13 +45,21 @@ export const filesRoute = new Hono<HonoEnv>()
         return c.json({ error: 'No file provided' }, 400);
       }
 
+      console.log(`[PERF] [${uploadRequestId}] File upload started: ${file?.name}, ${file?.size} bytes`);
+
       // Todo: (RR7) This is new.
       // Add file size validation.
       if (file.size > MAX_FILE_SIZE) {
         return c.json({ error: 'File too large' }, 400);
       }
 
+      const NORMALIZE_START = Date.now();
       const result = await putNormalizedPdfFileServerSide(file);
+      const NORMALIZE_TIME = Date.now();
+      console.log(`[PERF] [${uploadRequestId}] PDF normalization took ${NORMALIZE_TIME - NORMALIZE_START}ms`);
+
+      const UPLOAD_TOTAL = Date.now();
+      console.log(`[PERF] [${uploadRequestId}] Total upload time: ${UPLOAD_TOTAL - UPLOAD_START}ms`);
 
       return c.json(result);
     } catch (error) {
@@ -67,10 +79,16 @@ export const filesRoute = new Hono<HonoEnv>()
     }
   })
   .post('/presigned-post-url', sValidator('json', ZGetPresignedPostUrlRequestSchema), async (c) => {
+    // Performance timing: Presigned URL generation
+    const PRESIGN_START = Date.now();
+    const presignRequestId = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+    
     const { fileName, contentType } = c.req.valid('json');
 
     try {
       const { key, url } = await getPresignPostUrl(fileName, contentType);
+      const PRESIGN_TIME = Date.now();
+      console.log(`[PERF] [${presignRequestId}] Presigned URL generation took ${PRESIGN_TIME - PRESIGN_START}ms`);
 
       return c.json({ key, url } satisfies TGetPresignedPostUrlResponse);
     } catch (err) {
@@ -103,6 +121,11 @@ export const filesRoute = new Hono<HonoEnv>()
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
+      // Performance timing: Database query
+      const DB_QUERY_START = Date.now();
+      const queryRequestId = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+      console.log(`[PERF] [${queryRequestId}] DB query started: envelope ${envelopeId}, item ${envelopeItemId}`);
+
       const envelope = await prisma.envelope.findFirst({
         where: {
           id: envelopeId,
@@ -118,6 +141,9 @@ export const filesRoute = new Hono<HonoEnv>()
           },
         },
       });
+
+      const DB_QUERY_TIME = Date.now();
+      console.log(`[PERF] [${queryRequestId}] DB query completed in ${DB_QUERY_TIME - DB_QUERY_START}ms`);
 
       if (!envelope) {
         return c.json({ error: 'Envelope not found' }, 404);
@@ -171,6 +197,11 @@ export const filesRoute = new Hono<HonoEnv>()
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
+      // Performance timing: Database query
+      const DB_QUERY_START_2 = Date.now();
+      const queryRequestId2 = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+      console.log(`[PERF] [${queryRequestId2}] DB query started (download): envelope ${envelopeId}, item ${envelopeItemId}`);
+
       const envelope = await prisma.envelope.findFirst({
         where: {
           id: envelopeId,
@@ -186,6 +217,9 @@ export const filesRoute = new Hono<HonoEnv>()
           },
         },
       });
+
+      const DB_QUERY_TIME_2 = Date.now();
+      console.log(`[PERF] [${queryRequestId2}] DB query completed (download) in ${DB_QUERY_TIME_2 - DB_QUERY_START_2}ms`);
 
       if (!envelope) {
         return c.json({ error: 'Envelope not found' }, 404);
@@ -253,6 +287,11 @@ export const filesRoute = new Hono<HonoEnv>()
         };
       }
 
+      // Performance timing: Database query (token-based view)
+      const DB_QUERY_START_3 = Date.now();
+      const queryRequestId3 = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+      console.log(`[PERF] [${queryRequestId3}] DB query started (token view): item ${envelopeItemId}`);
+
       const envelopeItem = await prisma.envelopeItem.findUnique({
         where: envelopeWhereQuery,
         include: {
@@ -260,6 +299,9 @@ export const filesRoute = new Hono<HonoEnv>()
           documentData: true,
         },
       });
+
+      const DB_QUERY_TIME_3 = Date.now();
+      console.log(`[PERF] [${queryRequestId3}] DB query completed (token view) in ${DB_QUERY_TIME_3 - DB_QUERY_START_3}ms`);
 
       if (!envelopeItem) {
         return c.json({ error: 'Envelope item not found' }, 404);
@@ -305,6 +347,11 @@ export const filesRoute = new Hono<HonoEnv>()
         };
       }
 
+      // Performance timing: Database query (token-based download)
+      const DB_QUERY_START_4 = Date.now();
+      const queryRequestId4 = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+      console.log(`[PERF] [${queryRequestId4}] DB query started (token download): item ${envelopeItemId}`);
+
       const envelopeItem = await prisma.envelopeItem.findUnique({
         where: envelopeWhereQuery,
         include: {
@@ -312,6 +359,9 @@ export const filesRoute = new Hono<HonoEnv>()
           documentData: true,
         },
       });
+
+      const DB_QUERY_TIME_4 = Date.now();
+      console.log(`[PERF] [${queryRequestId4}] DB query completed (token download) in ${DB_QUERY_TIME_4 - DB_QUERY_START_4}ms`);
 
       if (!envelopeItem) {
         return c.json({ error: 'Envelope item not found' }, 404);

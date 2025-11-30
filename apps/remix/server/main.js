@@ -10,8 +10,14 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import handle from 'hono-react-router-adapter/node';
 
+// Performance timing: Server startup
+const START_TIME = Date.now();
+
 import server from './hono/server/router.js';
 import * as build from './index.js';
+
+const BUILD_LOAD_TIME = Date.now();
+console.log(`[PERF] Build loaded in ${BUILD_LOAD_TIME - START_TIME}ms`);
 
 server.use(
   serveStatic({
@@ -30,6 +36,12 @@ server.use(
 
 const handler = handle(build, server);
 
+const HANDLER_READY_TIME = Date.now();
+console.log(`[PERF] Handler ready in ${HANDLER_READY_TIME - START_TIME}ms`);
+
 const port = parseInt(process.env.PORT || '3000', 10);
 
 serve({ fetch: handler.fetch, port });
+
+const SERVER_START_TIME = Date.now();
+console.log(`[PERF] Server listening on port ${port} in ${SERVER_START_TIME - START_TIME}ms total`);

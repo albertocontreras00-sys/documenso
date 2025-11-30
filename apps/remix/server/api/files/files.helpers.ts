@@ -39,6 +39,10 @@ export const handleEnvelopeItemFileRequest = async ({
     return c.body(null, 304);
   }
 
+  // Performance timing: File fetch from storage
+  const FILE_FETCH_START = Date.now();
+  const fileRequestId = c.req.header('x-request-id') || c.req.header('fly-request-id') || 'unknown';
+
   const file = await getFileServerSide({
     type: documentData.type,
     data: documentDataToUse,
@@ -47,6 +51,9 @@ export const handleEnvelopeItemFileRequest = async ({
 
     return null;
   });
+
+  const FILE_FETCH_TIME = Date.now();
+  console.log(`[PERF] [${fileRequestId}] File fetch from storage took ${FILE_FETCH_TIME - FILE_FETCH_START}ms`);
 
   if (!file) {
     return c.json({ error: 'File not found' }, 404);

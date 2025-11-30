@@ -22,6 +22,10 @@ export default async function handleRequest(
   routerContext: EntryContext,
   _loadContext: AppLoadContext,
 ) {
+  // Performance timing: First page load
+  const REQUEST_START = Date.now();
+  const requestId = request.headers.get('x-request-id') || request.headers.get('fly-request-id') || 'unknown';
+
   let language = await langCookie.parse(request.headers.get('cookie') ?? '');
 
   if (!APP_I18N_OPTIONS.supportedLangs.includes(language)) {
@@ -29,6 +33,9 @@ export default async function handleRequest(
   }
 
   await dynamicActivate(language);
+
+  const I18N_TIME = Date.now();
+  console.log(`[PERF] [${requestId}] i18n activated in ${I18N_TIME - REQUEST_START}ms`);
 
   return new Promise((resolve, reject) => {
     let shellRendered = false;
@@ -46,10 +53,16 @@ export default async function handleRequest(
       {
         [readyOption]() {
           shellRendered = true;
+          const SHELL_TIME = Date.now();
+          console.log(`[PERF] [${requestId}] Shell rendered in ${SHELL_TIME - REQUEST_START}ms`);
+          
           const body = new PassThrough();
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set('Content-Type', 'text/html');
+
+          const TOTAL_TIME = Date.now();
+          console.log(`[PERF] [${requestId}] Total SSR time: ${TOTAL_TIME - REQUEST_START}ms`);
 
           resolve(
             new Response(stream, {
