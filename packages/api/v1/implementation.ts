@@ -356,7 +356,9 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
     const traceId = extractTraceId({
       traceId: metadata?.traceId,
       requestMetadata: metadata,
-      meta: body.meta,
+      meta: body.meta && typeof body.meta === 'object' && 'traceId' in body.meta 
+        ? { traceId: (body.meta as { traceId?: string }).traceId } 
+        : undefined,
     });
 
     try {
