@@ -9,6 +9,7 @@ import { AppError } from '../../errors/app-error';
 import { createDocumentData } from '../../server-only/document-data/create-document-data';
 import { normalizePdf } from '../../server-only/pdf/normalize-pdf';
 import { logEsignEvent, extractTraceId } from '../../server-only/esign-telemetry/esign-telemetry';
+import { logDebug, logInfo } from '../../utils/logger';
 import { uploadS3File } from './server-actions';
 
 type File = {
@@ -22,6 +23,11 @@ type File = {
  * a document data record.
  */
 export const putPdfFileServerSide = async (file: File) => {
+  logDebug('PutPdfFile', 'Starting PDF file upload', {
+    fileName: file.name,
+    fileType: file.type,
+  });
+
   const isEncryptedDocumentsAllowed = false; // Was feature flag.
 
   const arrayBuffer = await file.arrayBuffer();
@@ -42,7 +48,14 @@ export const putPdfFileServerSide = async (file: File) => {
 
   const { type, data } = await putFileServerSide(file);
 
-  return await createDocumentData({ type, data });
+  const documentData = await createDocumentData({ type, data });
+
+  logDebug('PutPdfFile', 'PDF file uploaded and document data created', {
+    documentDataId: documentData.id,
+    dataType: type,
+  });
+
+  return documentData;
 };
 
 /**
@@ -92,6 +105,11 @@ const putFileInDatabase = async (file: File) => {
 };
 
 const putFileInS3 = async (file: File) => {
+  logDebug('PutFileS3', 'Uploading file to S3', {
+    fileName: file.name,
+    fileSize: file.size || 'unknown',
+  });
+
   const buffer = await file.arrayBuffer();
 
   const blob = new Blob([buffer], { type: file.type });
@@ -101,6 +119,12 @@ const putFileInS3 = async (file: File) => {
   });
 
   const { key } = await uploadS3File(newFile);
+
+  logInfo('PutFileS3', 'File uploaded to S3 successfully', {
+    fileName: file.name,
+    s3Key: key,
+    fileSize: buffer.byteLength,
+  });
 
   // E-sign telemetry: S3 upload complete
   // Note: traceId may not be available at this level, so we generate a fallback

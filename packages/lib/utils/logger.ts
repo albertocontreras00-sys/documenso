@@ -1,65 +1,122 @@
-import { type TransportTargetOptions, pino } from 'pino';
+/**
+ * Safe logging utility for Documenso
+ * 
+ * Features:
+ * - Type-safe logging that won't break builds
+ * - Feature flag support (DEBUG_SIGN_FLOW)
+ * - Safe JSON stringification for complex types
+ * - No external dependencies
+ */
 
-import type { BaseApiLog } from '../types/api-logs';
-import { extractRequestMetadata } from '../universal/extract-request-metadata';
-import { env } from './env';
+const DEBUG_FLAG = process.env.DEBUG_SIGN_FLOW === 'true';
 
-const transports: TransportTargetOptions[] = [];
+/**
+ * Safely stringify a value, handling circular references and complex types
+ */
+function safeStringify(value: unknown): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
 
-if (env('NODE_ENV') !== 'production' && !env('INTERNAL_FORCE_JSON_LOGGER')) {
-  transports.push({
-    target: 'pino-pretty',
-    level: 'info',
-  });
-}
+  if (typeof value === 'string') {
+    return value;
+  }
 
-const loggingFilePath = env('NEXT_PRIVATE_LOGGER_FILE_PATH');
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
 
-if (loggingFilePath) {
-  transports.push({
-    target: 'pino/file',
-    level: 'info',
-    options: {
-      destination: loggingFilePath,
-      mkdir: true,
-    },
-  });
-}
+  // Create a new WeakSet for each stringify call to avoid cross-call contamination
+  const seen = new WeakSet();
 
-export const logger = pino({
-  level: 'info',
-  transport:
-    transports.length > 0
-      ? {
-          targets: transports,
+  try {
+    return JSON.stringify(value, (key, val) => {
+      // Handle circular references
+      if (typeof val === 'object' && val !== null) {
+        if (seen.has(val)) {
+          return '[Circular Reference]';
         }
-      : undefined,
-});
+        seen.add(val);
+      }
+      return val;
+    }, 2);
+  } catch (error) {
+    // Fallback for values that can't be stringified
+    try {
+      return String(value);
+    } catch {
+      return '[Unable to stringify]';
+    }
+  }
+}
 
-export const logDocumentAccess = ({
-  request,
-  documentId,
-  userId,
-}: {
-  request: Request;
-  documentId: number;
-  userId: number;
-}) => {
-  const metadata = extractRequestMetadata(request);
+/**
+ * Log debug information (only if DEBUG_SIGN_FLOW is enabled)
+ */
+export function logDebug(context: string, message: string, data?: unknown): void {
+  if (!DEBUG_FLAG) return;
 
-  const data: BaseApiLog = {
-    ipAddress: metadata.ipAddress,
-    userAgent: metadata.userAgent,
-    path: new URL(request.url).pathname,
-    auth: 'session',
-    source: 'app',
-    userId,
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    level: 'DEBUG',
+    context,
+    message,
+    ...(data !== undefined && { data: safeStringify(data) }),
   };
 
-  logger.info({
-    ...data,
-    input: {
-      documentId,
-    },
-  });
-};
+  console.log(JSON.stringify(logEntry));
+}
+
+/**
+ * Log informational messages
+ */
+export function logInfo(context: string, message: string, data?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    level: 'INFO',
+    context,
+    message,
+    ...(data !== undefined && { data: safeStringify(data) }),
+  };
+
+  console.log(JSON.stringify(logEntry));
+}
+
+/**
+ * Log error messages
+ */
+export function logError(context: string, message: string, error?: unknown, data?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    level: 'ERROR',
+    context,
+    message,
+    ...(error !== undefined && { 
+      error: error instanceof Error 
+        ? { message: error.message, stack: error.stack, name: error.name }
+        : safeStringify(error)
+    }),
+    ...(data !== undefined && { data: safeStringify(data) }),
+  };
+
+  console.error(JSON.stringify(logEntry));
+}
+
+/**
+ * Log warning messages
+ */
+export function logWarn(context: string, message: string, data?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    level: 'WARN',
+    context,
+    message,
+    ...(data !== undefined && { data: safeStringify(data) }),
+  };
+
+  console.warn(JSON.stringify(logEntry));
+}

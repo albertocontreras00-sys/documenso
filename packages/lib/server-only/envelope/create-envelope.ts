@@ -40,6 +40,7 @@ import { incrementDocumentId, incrementTemplateId } from '../envelope/increment-
 import { getTeamSettings } from '../team/get-team-settings';
 import { triggerWebhook } from '../webhooks/trigger/trigger-webhook';
 import { logEsignEvent, extractTraceId } from '../esign-telemetry/esign-telemetry';
+import { logDebug, logInfo } from '../../utils/logger';
 
 type CreateEnvelopeRecipientFieldOptions = TFieldAndMeta & {
   documentDataId: string;
@@ -103,6 +104,15 @@ export const createEnvelope = async ({
   requestMetadata,
   internalVersion,
 }: CreateEnvelopeOptions) => {
+  logDebug('CreateEnvelope', 'Starting envelope creation', {
+    userId,
+    teamId,
+    envelopeType: data.type,
+    title: data.title,
+    hasAttachments: !!attachments?.length,
+    recipientCount: data.recipients?.length || 0,
+  });
+
   const {
     type,
     title,
@@ -430,7 +440,20 @@ export const createEnvelope = async ({
           recipientCount: createdEnvelope.recipients.length,
         },
       });
+
+      logInfo('CreateEnvelope', 'Envelope created successfully', {
+        envelopeId: createdEnvelope.id,
+        secondaryId: createdEnvelope.secondaryId,
+        documentId: legacyDocumentId,
+        recipientCount: createdEnvelope.recipients.length,
+        type: createdEnvelope.type,
+      });
     }
+
+    logDebug('CreateEnvelope', 'Envelope creation completed', {
+      envelopeId: createdEnvelope.id,
+      type: createdEnvelope.type,
+    });
 
     return createdEnvelope;
     },

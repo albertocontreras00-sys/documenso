@@ -21,6 +21,7 @@ import { AppError, AppErrorCode } from '../../errors/app-error';
 import { jobs } from '../../jobs/client';
 import { extractDerivedDocumentEmailSettings } from '../../types/document-email';
 import { logEsignEvent, extractTraceId } from '../esign-telemetry/esign-telemetry';
+import { logDebug, logInfo, logError } from '../../utils/logger';
 import {
   ZCheckboxFieldMeta,
   ZDropdownFieldMeta,
@@ -57,6 +58,13 @@ export const sendDocument = async ({
   sendEmail,
   requestMetadata,
 }: SendDocumentOptions) => {
+  logDebug('SendDocument', 'Starting document send process', {
+    documentId: typeof id === 'string' ? id : id.id || id.secondaryId,
+    userId,
+    teamId,
+    sendEmail: sendEmail ?? true,
+  });
+
   const { envelopeWhereInput } = await getEnvelopeWhereInput({
     id,
     type: EnvelopeType.DOCUMENT,
@@ -298,6 +306,13 @@ export const sendDocument = async ({
     data: ZWebhookDocumentSchema.parse(mapEnvelopeToWebhookDocumentPayload(updatedEnvelope)),
     userId,
     teamId,
+  });
+
+  logInfo('SendDocument', 'Document sent successfully', {
+    envelopeId: updatedEnvelope.id,
+    documentId: legacyDocumentId,
+    recipientCount: updatedEnvelope.recipients.length,
+    emailsSent: sendEmail || (isRecipientSigningRequestEmailEnabled && sendEmail === undefined),
   });
 
   return updatedEnvelope;
