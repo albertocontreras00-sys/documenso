@@ -107,7 +107,7 @@ const putFileInDatabase = async (file: File) => {
 const putFileInS3 = async (file: File) => {
   logDebug('PutFileS3', 'Uploading file to S3', {
     fileName: file.name,
-    fileSize: file.size || 'unknown',
+    fileType: file.type,
   });
 
   const buffer = await file.arrayBuffer();

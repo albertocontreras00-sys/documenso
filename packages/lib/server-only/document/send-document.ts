@@ -59,7 +59,7 @@ export const sendDocument = async ({
   requestMetadata,
 }: SendDocumentOptions) => {
   logDebug('SendDocument', 'Starting document send process', {
-    documentId: typeof id === 'string' ? id : id.id || id.secondaryId,
+    documentId: typeof id === 'string' ? id : id.id || (id.type === 'documentId' ? id.id : undefined),
     userId,
     teamId,
     sendEmail: sendEmail ?? true,
