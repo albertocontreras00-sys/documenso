@@ -139,19 +139,26 @@ USER root
 RUN --mount=type=cache,target=/app/.npm-cache \
     chown -R nodejs:nodejs /app/.npm-cache 2>/dev/null || true
 
-# Ensure node_modules directory exists and prisma CLI is available
+# Ensure node_modules directory exists
 RUN mkdir -p /app/node_modules/.prisma && \
     chown -R nodejs:nodejs /app/node_modules
 
-# Install prisma CLI globally for generation (needed since it's in devDependencies)
-RUN npm install -g prisma@^6.19.0
+# Install Prisma generators needed for prisma generate
+# These are required even in production builds for code generation
+RUN --mount=type=cache,target=/app/.npm-cache \
+    npm config set cache /app/.npm-cache && \
+    npm install --no-save \
+      prisma@^6.19.0 \
+      prisma-kysely@^2.2.1 \
+      prisma-json-types-generator@^3.6.2 \
+      zod-prisma-types@3.3.5
 
 # Run prisma generate as root (cache mounts require root to write)
 # This ensures @prisma/client is generated in the production node_modules
 RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.prisma \
     npm config set cache /app/.npm-cache && \
-    prisma generate --schema ./packages/prisma/schema.prisma
+    npx prisma generate --schema ./packages/prisma/schema.prisma
 
 # Verify @prisma/client exists
 RUN test -d /app/node_modules/@prisma/client || (echo "ERROR: @prisma/client not generated" && exit 1)
