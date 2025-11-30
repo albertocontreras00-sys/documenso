@@ -34,10 +34,12 @@ import { getFileServerSide } from '../../universal/upload/get-file.server';
 import { putPdfFileServerSide } from '../../universal/upload/put-file.server';
 import { extractDerivedDocumentMeta } from '../../utils/document';
 import { createDocumentAuthOptions, createRecipientAuthOptions } from '../../utils/document-auth';
+import { mapSecondaryIdToDocumentId } from '../../utils/envelope';
 import { buildTeamWhereQuery } from '../../utils/teams';
 import { incrementDocumentId, incrementTemplateId } from '../envelope/increment-id';
 import { getTeamSettings } from '../team/get-team-settings';
 import { triggerWebhook } from '../webhooks/trigger/trigger-webhook';
+import { logEsignEvent, extractTraceId } from '../esign-telemetry/esign-telemetry';
 
 type CreateEnvelopeRecipientFieldOptions = TFieldAndMeta & {
   documentDataId: string;
@@ -409,6 +411,24 @@ export const createEnvelope = async ({
         data: ZWebhookDocumentSchema.parse(mapEnvelopeToWebhookDocumentPayload(createdEnvelope)),
         userId,
         teamId,
+      });
+
+      // E-sign telemetry: Documenso document created (after transaction)
+      const traceId = extractTraceId({
+        traceId: requestMetadata?.requestMetadata?.traceId,
+        requestMetadata,
+      });
+      const legacyDocumentId = mapSecondaryIdToDocumentId(createdEnvelope.secondaryId);
+      await logEsignEvent({
+        traceId,
+        step: 'sign_documenso_created',
+        status: 'ok',
+        userId,
+        documentId: legacyDocumentId,
+        extra: {
+          externalId: createdEnvelope.externalId,
+          recipientCount: createdEnvelope.recipients.length,
+        },
       });
     }
 

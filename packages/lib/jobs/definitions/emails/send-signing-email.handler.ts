@@ -27,6 +27,7 @@ import { createDocumentAuditLogData } from '../../../utils/document-audit-logs';
 import { unsafeBuildEnvelopeIdQuery } from '../../../utils/envelope';
 import { renderCustomEmailTemplate } from '../../../utils/render-custom-email-template';
 import { renderEmailWithI18N } from '../../../utils/render-email-with-i18n';
+import { logEsignEvent, extractTraceId } from '../../../server-only/esign-telemetry/esign-telemetry';
 import type { JobRunIO } from '../../client/_internal/job';
 import type { TSendSigningEmailJobDefinition } from './send-signing-email';
 
@@ -177,7 +178,26 @@ export const run = async ({
     includeSenderDetails: settings.includeSenderDetails,
   });
 
+  // Extract trace ID for telemetry
+  const traceId = extractTraceId({
+    traceId: requestMetadata?.traceId,
+    requestMetadata,
+  });
+
   await io.runTask('send-signing-email', async () => {
+    // E-sign telemetry: SES send attempt
+    await logEsignEvent({
+      traceId,
+      step: 'ses_send_attempt',
+      status: 'ok',
+      userId,
+      documentId,
+      extra: {
+        recipientId: recipient.id,
+        recipientEmail: recipient.email,
+      },
+    });
+
     const [html, text] = await Promise.all([
       renderEmailWithI18N(template, { lang: emailLanguage, branding }),
       renderEmailWithI18N(template, {
@@ -187,20 +207,50 @@ export const run = async ({
       }),
     ]);
 
-    await mailer.sendMail({
-      to: {
-        name: recipient.name,
-        address: recipient.email,
-      },
-      from: senderEmail,
-      replyTo: replyToEmail,
-      subject: renderCustomEmailTemplate(
-        documentMeta?.subject || emailSubject,
-        customEmailTemplate,
-      ),
-      html,
-      text,
-    });
+    try {
+      await mailer.sendMail({
+        to: {
+          name: recipient.name,
+          address: recipient.email,
+        },
+        from: senderEmail,
+        replyTo: replyToEmail,
+        subject: renderCustomEmailTemplate(
+          documentMeta?.subject || emailSubject,
+          customEmailTemplate,
+        ),
+        html,
+        text,
+      });
+
+      // E-sign telemetry: SES send successful
+      await logEsignEvent({
+        traceId,
+        step: 'ses_send_ok',
+        status: 'ok',
+        userId,
+        documentId,
+        extra: {
+          recipientId: recipient.id,
+          recipientEmail: recipient.email,
+        },
+      });
+    } catch (error) {
+      // E-sign telemetry: SES send error
+      await logEsignEvent({
+        traceId,
+        step: 'ses_send_error',
+        status: 'error',
+        userId,
+        documentId,
+        error,
+        extra: {
+          recipientId: recipient.id,
+          recipientEmail: recipient.email,
+        },
+      });
+      throw error; // Re-throw to let job system handle it
+    }
   });
 
   await io.runTask('update-recipient', async () => {

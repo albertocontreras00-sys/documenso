@@ -20,6 +20,7 @@ import { validateCheckboxLength } from '../../advanced-fields-validation/validat
 import { AppError, AppErrorCode } from '../../errors/app-error';
 import { jobs } from '../../jobs/client';
 import { extractDerivedDocumentEmailSettings } from '../../types/document-email';
+import { logEsignEvent, extractTraceId } from '../esign-telemetry/esign-telemetry';
 import {
   ZCheckboxFieldMeta,
   ZDropdownFieldMeta,
@@ -262,6 +263,12 @@ export const sendDocument = async ({
   const isRecipientSigningRequestEmailEnabled = extractDerivedDocumentEmailSettings(
     envelope.documentMeta,
   ).recipientSigningRequest;
+
+  // Extract trace ID for telemetry
+  const traceId = extractTraceId({
+    traceId: requestMetadata?.requestMetadata?.traceId,
+    requestMetadata,
+  });
 
   // Only send email if one of the following is true:
   // - It is explicitly set

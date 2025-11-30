@@ -8,6 +8,7 @@ import { env } from '@documenso/lib/utils/env';
 import { AppError } from '../../errors/app-error';
 import { createDocumentData } from '../../server-only/document-data/create-document-data';
 import { normalizePdf } from '../../server-only/pdf/normalize-pdf';
+import { logEsignEvent, extractTraceId } from '../../server-only/esign-telemetry/esign-telemetry';
 import { uploadS3File } from './server-actions';
 
 type File = {
@@ -100,6 +101,21 @@ const putFileInS3 = async (file: File) => {
   });
 
   const { key } = await uploadS3File(newFile);
+
+  // E-sign telemetry: S3 upload complete
+  // Note: traceId may not be available at this level, so we generate a fallback
+  // The traceId should ideally be passed from the caller, but for now we log with a generated one
+  const traceId = extractTraceId({});
+  await logEsignEvent({
+    traceId,
+    step: 'sign_s3_upload_complete',
+    status: 'ok',
+    extra: {
+      fileName: file.name,
+      fileSize: buffer.byteLength,
+      s3Key: key,
+    },
+  });
 
   return {
     type: DocumentDataType.S3_PATH,

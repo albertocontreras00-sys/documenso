@@ -15,6 +15,7 @@ import { findDocuments } from '@documenso/lib/server-only/document/find-document
 import { resendDocument } from '@documenso/lib/server-only/document/resend-document';
 import { sendDocument } from '@documenso/lib/server-only/document/send-document';
 import { createEnvelope } from '@documenso/lib/server-only/envelope/create-envelope';
+import { logEsignEvent, extractTraceId } from '@documenso/lib/server-only/esign-telemetry/esign-telemetry';
 import {
   getEnvelopeById,
   getEnvelopeWhereInput,
@@ -351,8 +352,34 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
   createDocument: authenticatedMiddleware(async (args, user, team, { metadata, logger }) => {
     const { body } = args;
 
+    // Extract trace ID from metadata or generate
+    const traceId = extractTraceId({
+      traceId: metadata?.traceId,
+      requestMetadata: metadata,
+      meta: body.meta,
+    });
+
     try {
+      // E-sign telemetry: sign service received request
+      await logEsignEvent({
+        traceId,
+        step: 'sign_received_request',
+        status: 'ok',
+        userId: user.id,
+        extra: {
+          externalId: body.externalId,
+          recipientCount: body.recipients?.length || 0,
+        },
+      });
+
       if (process.env.NEXT_PUBLIC_UPLOAD_TRANSPORT !== 's3') {
+        await logEsignEvent({
+          traceId,
+          step: 'sign_received_request',
+          status: 'error',
+          userId: user.id,
+          error: 'S3 transport not configured',
+        });
         return {
           status: 500,
           body: {
@@ -447,6 +474,19 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
       });
 
       const legacyDocumentId = mapSecondaryIdToDocumentId(envelope.secondaryId);
+
+      // E-sign telemetry: Documenso document created
+      await logEsignEvent({
+        traceId,
+        step: 'sign_documenso_created',
+        status: 'ok',
+        userId: user.id,
+        documentId: legacyDocumentId,
+        extra: {
+          externalId: envelope.externalId,
+          recipientCount: body.recipients?.length || 0,
+        },
+      });
 
       const { recipients } = await setDocumentRecipients({
         userId: user.id,
@@ -1007,6 +1047,12 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
     const { id: documentId } = args.params;
     const { sendEmail, sendCompletionEmails } = args.body;
 
+    // Extract trace ID from metadata
+    const traceId = extractTraceId({
+      traceId: metadata?.traceId,
+      requestMetadata: metadata,
+    });
+
     logger.info({
       input: {
         id: documentId,
@@ -1015,6 +1061,18 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
 
     try {
       const legacyDocumentId = Number(documentId);
+
+      // E-sign telemetry: SES send attempt
+      await logEsignEvent({
+        traceId,
+        step: 'ses_send_attempt',
+        status: 'ok',
+        userId: user.id,
+        documentId: legacyDocumentId,
+        extra: {
+          sendEmail: sendEmail !== false, // Defaults to true
+        },
+      });
 
       const envelope = await getEnvelopeById({
         id: {
@@ -1075,6 +1133,18 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
         requestMetadata: metadata,
       });
 
+      // E-sign telemetry: SES send successful
+      await logEsignEvent({
+        traceId,
+        step: 'ses_send_ok',
+        status: 'ok',
+        userId: user.id,
+        documentId: legacyDocumentId,
+        extra: {
+          recipientCount: recipients.length,
+        },
+      });
+
       return {
         status: 200,
         body: {
@@ -1095,6 +1165,20 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
         },
       };
     } catch (err) {
+      // E-sign telemetry: SES send error
+      const traceId = extractTraceId({
+        traceId: metadata?.traceId,
+        requestMetadata: metadata,
+      });
+      await logEsignEvent({
+        traceId,
+        step: 'ses_send_error',
+        status: 'error',
+        userId: user.id,
+        documentId: Number(documentId),
+        error: err,
+      });
+
       return {
         status: 500,
         body: {
