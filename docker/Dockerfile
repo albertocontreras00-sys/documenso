@@ -117,9 +117,10 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/json/ .
 COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config ./packages/tailwind-config
 
 # Install production dependencies with cache mounts
-RUN --mount=type=cache,target=/home/nodejs/.npm \
+# Use /app/.npm-cache to avoid permission issues with /home/nodejs/.npm
+RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.cache \
-    npm ci --only=production
+    npm ci --only=production --cache=/app/.npm-cache
 
 # Automatically leverage output traces to reduce image size
 # https://nodejs.org/docs/advanced-features/output-file-tracing
@@ -131,8 +132,10 @@ COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/schema.prisma .
 COPY --from=installer --chown=nodejs:nodejs /app/packages/prisma/migrations ./packages/prisma/migrations
 
 # Generate the prisma client again with cache mount
-RUN --mount=type=cache,target=/home/nodejs/.npm \
+# Use /app/.npm-cache to avoid permission issues with /home/nodejs/.npm
+RUN --mount=type=cache,target=/app/.npm-cache \
     --mount=type=cache,target=/app/node_modules/.prisma \
+    npm config set cache /app/.npm-cache && \
     npx prisma generate --schema ./packages/prisma/schema.prisma
 
 
